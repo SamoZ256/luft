@@ -38,10 +38,6 @@ class AirType {
     llvm::Type* _long;
     llvm::Type* _long4;
 
-    llvm::Type* _dxmt_vertex_buffer_entry;
-    llvm::Type* _dxmt_draw_arguments;
-    llvm::Type* _dxmt_draw_indexed_arguments;
-
     llvm::Type* _sampler;
 
     llvm::Type* _mesh_grid_properties;

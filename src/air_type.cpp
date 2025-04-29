@@ -52,35 +52,6 @@ AirType::AirType(LLVMContext& context) : context(context) {
     _float2 = FixedVectorType::get(_float, 2);
     _char2 = FixedVectorType::get(_byte, 2);
 
-    _dxmt_vertex_buffer_entry = StructType::create(
-        context,
-        {
-            _byte->getPointerTo((uint32_t)AddressSpace::device),
-            _int, // stride
-            _int, // length
-        },
-        "dxmt_vertex_buffer_entry");
-
-    _dxmt_draw_arguments = StructType::create(context,
-                                              {
-                                                  _int, // vertex count
-                                                  _int, // instance count
-                                                  _int, // start vertex
-                                                  _int, // start instance
-                                              },
-                                              "dxmt_draw_arguments");
-
-    _dxmt_draw_indexed_arguments =
-        StructType::create(context,
-                           {
-                               _int, // index count
-                               _int, // instance count
-                               _int, // start index
-                               _int, // base vertex
-                               _int, // base instance
-                           },
-                           "dxmt_draw_indexed_arguments");
-
     auto tyOpaque = get_or_create_struct(context, "opaque");
     _ptr_device = PointerType::get(tyOpaque, 1);
     _ptr_constant = PointerType::get(tyOpaque, 2);
