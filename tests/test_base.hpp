@@ -21,37 +21,36 @@ struct ModuleOptions {
 class TestBase {
   public:
     TestBase(const std::string_view& name_, const ModuleOptions& opts)
-        : name{name_}, module("default", context), types(context) {
+        : name{name_}, m("default", context), types(context) {
+        context.setOpaquePointers(false);
+
         // TODO: diagnostics handler
 
         // TODO: move this to the API
-        module.setSourceFileName("airconv_generated.metal");
-        module.setTargetTriple("air64-apple-macosx14.0.0");
-        module.setDataLayout(
-            "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:"
-            "64-f32:32:32-f64:"
-            "64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:"
-            "64-v96:128:128-"
-            "v128:128:128-v192:256:256-v256:256:256-v512:512:512-"
-            "v1024:1024:1024-n8:"
-            "16:32");
-        module.setSDKVersion(llvm::VersionTuple(14, 0));
-        module.addModuleFlag(llvm::Module::ModFlagBehavior::Error, "wchar_size",
-                             4);
-        module.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
-                             "frame-pointer", 2);
-        module.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
-                             "air.max_device_buffers", 31);
-        module.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
-                             "air.max_constant_buffers", 31);
-        module.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
-                             "air.max_threadgroup_buffers", 31);
-        module.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
-                             "air.max_textures", 128);
-        module.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
-                             "air.max_read_write_textures", 8);
-        module.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
-                             "air.max_samplers", 16);
+        m.setSourceFileName("airconv_generated.metal");
+        m.setTargetTriple("air64-apple-macosx14.0.0");
+        m.setDataLayout("e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:"
+                        "64-f32:32:32-f64:"
+                        "64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:"
+                        "64-v96:128:128-"
+                        "v128:128:128-v192:256:256-v256:256:256-v512:512:512-"
+                        "v1024:1024:1024-n8:"
+                        "16:32");
+        m.setSDKVersion(llvm::VersionTuple(14, 0));
+        m.addModuleFlag(llvm::Module::ModFlagBehavior::Error, "wchar_size", 4);
+        m.addModuleFlag(llvm::Module::ModFlagBehavior::Max, "frame-pointer", 2);
+        m.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
+                        "air.max_device_buffers", 31);
+        m.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
+                        "air.max_constant_buffers", 31);
+        m.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
+                        "air.max_threadgroup_buffers", 31);
+        m.addModuleFlag(llvm::Module::ModFlagBehavior::Max, "air.max_textures",
+                        128);
+        m.addModuleFlag(llvm::Module::ModFlagBehavior::Max,
+                        "air.max_read_write_textures", 8);
+        m.addModuleFlag(llvm::Module::ModFlagBehavior::Max, "air.max_samplers",
+                        16);
 
         auto createUnsignedInteger = [&](uint32_t s) {
             return llvm::ConstantAsMetadata::get(
@@ -61,18 +60,18 @@ class TestBase {
             return llvm::MDString::get(context, s);
         };
 
-        auto airVersion = module.getOrInsertNamedMetadata("air.version");
+        auto airVersion = m.getOrInsertNamedMetadata("air.version");
         airVersion->addOperand(llvm::MDTuple::get(
             context, {createUnsignedInteger(2), createUnsignedInteger(6),
                       createUnsignedInteger(0)}));
         auto airLangVersion =
-            module.getOrInsertNamedMetadata("air.language_version");
+            m.getOrInsertNamedMetadata("air.language_version");
         airLangVersion->addOperand(llvm::MDTuple::get(
             context, {createString("Metal"), createUnsignedInteger(3),
                       createUnsignedInteger(0), createUnsignedInteger(0)}));
 
         auto airCompileOptions =
-            module.getOrInsertNamedMetadata("air.compile_options");
+            m.getOrInsertNamedMetadata("air.compile_options");
         airCompileOptions->addOperand(llvm::MDTuple::get(
             context, {createString("air.compile.denorms_disable")}));
         airCompileOptions->addOperand(llvm::MDTuple::get(
@@ -120,13 +119,13 @@ class TestBase {
         llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(opt);
 
         llvm::FunctionPassManager FPM;
-        FPM.addPass(llvm::ScalarizerPass());
+        // FPM.addPass(llvm::ScalarizerPass());
 
         MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
         MPM.addPass(llvm::VerifierPass());
 
         // Optimize the IR!
-        MPM.run(module, MAM);
+        MPM.run(m, MAM);
     }
 
     int Run() {
@@ -134,16 +133,18 @@ class TestBase {
         if (res != 0)
             return res;
 
-        // TODO: enable optimizations
-        // RunOptimizationPasses(llvm::OptimizationLevel::O2);
+        m.print(llvm::outs(), nullptr);
 
-        module.print(llvm::outs(), nullptr);
+        llvm::verifyModule(m, &llvm::errs());
+
+        // TODO: uncomment
+        // RunOptimizationPasses(llvm::OptimizationLevel::O2);
 
         /*
         llvm::SmallVector<char, 0> vec;
         llvm::raw_svector_ostream os(vec);
         luft::metallib::MetallibWriter writer;
-        writer.Write(module, os);
+        writer.Write(m, os);
         */
 
         // TODO: verify the output
@@ -155,7 +156,7 @@ class TestBase {
     std::string name;
 
     llvm::LLVMContext context;
-    llvm::Module module;
+    llvm::Module m;
 
     luft::AirType types;
 

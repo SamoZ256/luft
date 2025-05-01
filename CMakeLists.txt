@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(luft VERSION 1.0 LANGUAGES C CXX)
 
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM 15 REQUIRED CONFIG)
 llvm_map_components_to_libnames(LLVM_LIBS support core irreader passes profiledata analysis)
 
 add_library(luft SHARED

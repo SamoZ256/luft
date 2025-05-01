@@ -6,8 +6,8 @@ TEST(Basic) {
         .type = luft::msl_float4,
     });
 
-    auto [function, meta] = signature_builder.CreateFunction(
-        "main_vertex", context, module, 0, false);
+    auto [function, meta] =
+        signature_builder.CreateFunction("main_vertex", context, m, 0, false);
 
     auto entry_bb = llvm::BasicBlock::Create(context, "entry", function);
     llvm::IRBuilder<> builder(entry_bb);
@@ -33,7 +33,7 @@ TEST(Basic) {
 
     builder.CreateRet(ret_v);
 
-    module.getOrInsertNamedMetadata("air.vertex")->addOperand(meta);
+    m.getOrInsertNamedMetadata("air.vertex")->addOperand(meta);
 
     return 0;
 }
